@@ -109,12 +109,10 @@ if __name__ == "__main__":
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu  
 
-    video_folder = args.folder  
+    # video_path = './sample/' + args.video
+    video_path = 'output/human36/S1_Discussion_54138969.mp4'
 
-    video_files = glob.glob(os.path.join(video_folder, '*.mp4'))  
+    video_name = video_path.split('/')[-1].split('.')[0]
+    output_dir = './output/' + video_name + '/'
 
-    for video_file in video_files:  
-        video_name = os.path.splitext(os.path.basename(video_file))[0]  
-        output_dir = './output/test-001/'
-        # output_dir = os.path.join('./output/test-001', video_name)  
-        get_pose2D(video_file, output_dir, video_name)
+    get_pose2D(video_path, output_dir, video_name)

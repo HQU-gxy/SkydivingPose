@@ -40,12 +40,14 @@ THRED_SCORE = 0.5
 POSE_TYPE  = Literal["dwpose-t", "dwpose-m", "dwpose-s", "dwpose-l", \
                      "rtmpose-m_simcc-crowdpose_pt-aic-coco_210e-256x192-e6192cac_20230224",\
                     "rtmpose-m_simcc-crowdpose_pt-aic-coco_210e-256x192-e6192cac_20230224",\
-                    'rtmpose-m_simcc-mpii_pt-aic-coco_210e-256x256-ec4dbec8_20230206']
+                    'rtmpose-m_simcc-mpii_pt-aic-coco_210e-256x256-ec4dbec8_20230206',\
+                    'rtmo-l_16xb16-600e_body7-640x640-b37118ce_20231211']
 POSE_CONFIG: DETECT_TYPE = "dwpose-m"
 POSE_CFG_DICT = {
     "dwpose-m": "configs/body_2d_keypoint/rtmpose/coco/rtmpose-m_8xb256-420e_coco-256x192.py",
     "rtmpose-m_simcc-crowdpose_pt-aic-coco_210e-256x192-e6192cac_20230224": "configs/td-reg_res152_rle-8xb64-210e_coco-384x288.py",
-    "rtmpose-m_simcc-mpii_pt-aic-coco_210e-256x256-ec4dbec8_20230206": "configs/rtmpose-m_8xb64-210e_mpii-256x256.py"
+    "rtmpose-m_simcc-mpii_pt-aic-coco_210e-256x256-ec4dbec8_20230206": "configs/rtmpose-m_8xb64-210e_mpii-256x256.py",
+    'rtmo-l_16xb16-600e_body7-640x640-b37118ce_20231211': "configs/rtmo-l_16xb16-600e_body7-640x640.py"
 }
 # configs/crowded/rtmpose-m_8xb64-210e_crowdpose-256x192.py
 # POSE_CFG = Path("configs/body_2d_keypoint/rtmpose/coco/rtmpose-m_8xb256-420e_coco-256x192.py")
@@ -210,7 +212,7 @@ def gen_video_kpts(video, num_peroson=1, gen_output=False):
 
     pre_kps, pre_score = None, None
 
-    for ii in tqdm(range(video_length)):
+    for ii in tqdm(range(video_length-1)):
     # for ii in tqdm(range(70)):
         ret, frame = cap.read()
 
@@ -227,7 +229,7 @@ def gen_video_kpts(video, num_peroson=1, gen_output=False):
         bboxs, scores = boxes.xyxy, boxes.conf
 
         if bboxs is None or not bboxs.any():
-            # print('No person detected!')
+            print('No person detected!')
             try:
                 bboxs = bboxs_pre
                 scores = scores_pre
@@ -266,8 +268,13 @@ def gen_video_kpts(video, num_peroson=1, gen_output=False):
             person_positions.append((x1, y1, x2, y2))
             person_img = frame[y1:y2, x1:x2]  # 获取边界框内的图像部分
 
-        kpts = np.zeros((num_peroson, 17, 2), dtype=np.float32)
-        scores = np.zeros((num_peroson, 17), dtype=np.float32)
+        if "mpii" in POSE_CONFIG:
+            kpts = np.zeros((num_peroson, 16, 2), dtype=np.float32)
+            scores = np.zeros((num_peroson, 16), dtype=np.float32)
+        else:
+            kpts = np.zeros((num_peroson, 17, 2), dtype=np.float32)
+            scores = np.zeros((num_peroson, 17), dtype=np.float32)
+
 
         # 对每个跟踪到的人进行识别
         for idx, bbox in enumerate(track_bboxs[:num_peroson]):
@@ -295,8 +302,8 @@ def gen_video_kpts(video, num_peroson=1, gen_output=False):
                 kpts[idx, :, 1] += y1_orig
                 
                 scores[idx] = pred_socre.squeeze()
-            except:
-                print("No Pose Detect!")
+            except Exception as e:
+                print("No Pose Detect!", e)
                 kpts, scores = pre_kps, pre_score 
                 
         pre_kps, pre_score = kpts, scores

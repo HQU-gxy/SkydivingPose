@@ -205,7 +205,7 @@ def gen_video_3D_kpts(video, num_peroson=1, gen_output=False):
 
     pre_kps, pre_score = None, None
 
-    for ii in tqdm(range(video_length)):
+    for ii in tqdm(range(video_length)-1):
     # for ii in tqdm(range(70)):
         ret, frame = cap.read()
 
