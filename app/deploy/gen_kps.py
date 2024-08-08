@@ -38,17 +38,20 @@ DETECT_MODEL = YOLO("{}/{}.pt".format(DETECT_PATH, DETECT_CONFIG))
 THRED_SCORE = 0.5
 
 POSE_TYPE  = Literal["dwpose-t", "dwpose-m", "dwpose-s", "dwpose-l", \
+                     "dw-whole-ll_ucoco", \
                      "rtmpose-m_simcc-crowdpose_pt-aic-coco_210e-256x192-e6192cac_20230224",\
                     "rtmpose-m_simcc-crowdpose_pt-aic-coco_210e-256x192-e6192cac_20230224",\
                     'rtmpose-m_simcc-mpii_pt-aic-coco_210e-256x256-ec4dbec8_20230206',\
                     'rtmo-l_16xb16-600e_body7-640x640-b37118ce_20231211']
-POSE_CONFIG: DETECT_TYPE = "dwpose-m"
+POSE_CONFIG: DETECT_TYPE = "dw-whole-ll_ucoco"
 POSE_CFG_DICT = {
     "dwpose-m": "configs/body_2d_keypoint/rtmpose/coco/rtmpose-m_8xb256-420e_coco-256x192.py",
     "rtmpose-m_simcc-crowdpose_pt-aic-coco_210e-256x192-e6192cac_20230224": "configs/td-reg_res152_rle-8xb64-210e_coco-384x288.py",
     "rtmpose-m_simcc-mpii_pt-aic-coco_210e-256x256-ec4dbec8_20230206": "configs/rtmpose-m_8xb64-210e_mpii-256x256.py",
-    'rtmo-l_16xb16-600e_body7-640x640-b37118ce_20231211': "configs/rtmo-l_16xb16-600e_body7-640x640.py"
+    'rtmo-l_16xb16-600e_body7-640x640-b37118ce_20231211': "configs/rtmo-l_16xb16-600e_body7-640x640.py",
+    "dw-whole-ll_ucoco": "configs/whole_body_2d/rtmpose-l_8xb64-270e_coco-ubody-wholebody-256x192.py",
 }
+
 # configs/crowded/rtmpose-m_8xb64-210e_crowdpose-256x192.py
 # POSE_CFG = Path("configs/body_2d_keypoint/rtmpose/coco/rtmpose-m_8xb256-420e_coco-256x192.py")
 POSE_CFG = Path(POSE_CFG_DICT[POSE_CONFIG])
@@ -65,8 +68,8 @@ IMAGE_SIZE_DICT = {
     "yolov8n": [640, 640],
     "yolov8s": [640, 640],
     "yolov8l": [640, 640]
-
 }
+
 IMAGE_SIZE = IMAGE_SIZE_DICT[DETECT_CONFIG]
 
 
@@ -212,7 +215,7 @@ def gen_video_kpts(video, num_peroson=1, gen_output=False):
 
     pre_kps, pre_score = None, None
 
-    for ii in tqdm(range(video_length-1)):
+    for ii in tqdm(range(video_length)):
     # for ii in tqdm(range(70)):
         ret, frame = cap.read()
 
@@ -305,7 +308,7 @@ def gen_video_kpts(video, num_peroson=1, gen_output=False):
             except Exception as e:
                 print("No Pose Detect!", e)
                 kpts, scores = pre_kps, pre_score 
-                
+        # print(kpts)      
         pre_kps, pre_score = kpts, scores
 
 

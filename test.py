@@ -180,7 +180,7 @@ def get_pose3D(video_path, output_dir, fix_z):
     ## input
     keypoints = np.load(output_dir + 'input_2D/input_keypoints_2d.npz', allow_pickle=True)['reconstruction']
     cap = cv2.VideoCapture(video_path)
-    video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) - 1
+    video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     print("============video_length: ", video_length)
     n_chunks = video_length // args.frames + 1
     offset = (n_chunks * args.frames - video_length) // 2
@@ -348,7 +348,7 @@ if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 
     # video_path = './sample/' + args.video
-    video_path = '/home/zlt/Documents/SkydivingPose/sample/platform-02.mp4'
+    video_path = 'sample/platform/pl-005.mkv'
 
     video_name = video_path.split('/')[-1].split('.')[0]
     output_dir = './output/' + video_name + '/'
