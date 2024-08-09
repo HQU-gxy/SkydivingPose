@@ -336,17 +336,16 @@ def gen_video_kpts(video, video_name, output_dir, num_peroson=1, gen_output=Fals
             "imageWidth": frame.shape[1]  
         }  
 
-        for person_idx, person_keypoints in enumerate(keypoints):  
-            for kpt_idx, (x, y) in enumerate(person_keypoints):  
-                shape = {  
-                    "label": "human",  
-                    "points": [[float(x1_orig), float(y1_orig)], [float(x2_orig), float(y2_orig)]],  
-                    "group_id": None,  
-                    "description": "",  
-                    "shape_type": "point",  
-                    "flags": {}  
-                }  
-                json_data["shapes"].append(shape)  
+  
+        shape = {  
+            "label": "human",  
+            "points": [[float(x1_orig), float(y1_orig)], [float(x2_orig), float(y2_orig)]],  
+            "group_id": None,  
+            "description": "",  
+            "shape_type": "rectangle",  
+            "flags": {}  
+        }  
+        json_data["shapes"].append(shape)  
 
         # 保存JSON文件  
         json_filename = f"detect/{video_name}_frame_{ii:04d}.json"  
