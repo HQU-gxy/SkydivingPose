@@ -101,6 +101,8 @@ def gen_video_kpts(video, det_dim=416, num_peroson=1, gen_output=False):
 
     kpts_result = []
     scores_result = []
+
+    print("=====> video_length", video_length)
     for ii in tqdm(range(video_length)):
         ret, frame = cap.read()
 

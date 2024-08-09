@@ -38,18 +38,19 @@ DETECT_MODEL = YOLO("{}/{}.pt".format(DETECT_PATH, DETECT_CONFIG))
 THRED_SCORE = 0.5
 
 POSE_TYPE  = Literal["dwpose-t", "dwpose-m", "dwpose-s", "dwpose-l", \
-                     "dw-whole-ll_ucoco", \
+                     "dw-whole-ll_ucoco", "dw-ll_ucoco_384", \
                      "rtmpose-m_simcc-crowdpose_pt-aic-coco_210e-256x192-e6192cac_20230224",\
                     "rtmpose-m_simcc-crowdpose_pt-aic-coco_210e-256x192-e6192cac_20230224",\
                     'rtmpose-m_simcc-mpii_pt-aic-coco_210e-256x256-ec4dbec8_20230206',\
                     'rtmo-l_16xb16-600e_body7-640x640-b37118ce_20231211']
-POSE_CONFIG: DETECT_TYPE = "dw-whole-ll_ucoco"
+POSE_CONFIG: DETECT_TYPE = "dw-ll_ucoco_384"
 POSE_CFG_DICT = {
     "dwpose-m": "configs/body_2d_keypoint/rtmpose/coco/rtmpose-m_8xb256-420e_coco-256x192.py",
     "rtmpose-m_simcc-crowdpose_pt-aic-coco_210e-256x192-e6192cac_20230224": "configs/td-reg_res152_rle-8xb64-210e_coco-384x288.py",
     "rtmpose-m_simcc-mpii_pt-aic-coco_210e-256x256-ec4dbec8_20230206": "configs/rtmpose-m_8xb64-210e_mpii-256x256.py",
     'rtmo-l_16xb16-600e_body7-640x640-b37118ce_20231211': "configs/rtmo-l_16xb16-600e_body7-640x640.py",
     "dw-whole-ll_ucoco": "configs/whole_body_2d/rtmpose-l_8xb64-270e_coco-ubody-wholebody-256x192.py",
+    "dw-ll_ucoco_384": "configs/whole_body_2d/rtmpose-l_8xb32-270e_coco-ubody-wholebody-384x288.py",
 }
 
 # configs/crowded/rtmpose-m_8xb64-210e_crowdpose-256x192.py
@@ -85,7 +86,7 @@ def gen_frame_kpts(frame, people_sort, bboxs_pre, person_scores_pre, num_peroson
     bboxs, person_scores = boxes.xyxy, boxes.conf
 
     if bboxs is None or not bboxs.any():
-        # print('No person detected!')
+        print('No person detected!')
         if bboxs_pre is None or person_scores_pre is None:
             return kpts, scores, frame_bbox, frame_person_score
         bboxs = bboxs_pre
@@ -164,7 +165,7 @@ def get_3D_kpts(i, args, model, offset, DETECT_WINDOW,\
     input_2D = torch.from_numpy(input_2D.astype('float32')).cuda()
 
     N = input_2D.size(0)
-
+    
     ## estimation
     with torch.no_grad():
         output_3D_non_flip = model(input_2D[:, 0])
@@ -307,21 +308,21 @@ def gen_video_kpts(video, output_dir, num_peroson=1, gen_output=False):
                 pred_instances.keypoints[0] = kpts[idx]
                 keypoints = pred_instances.keypoints
                 keypoint_scores = pred_instances.keypoint_scores
-                print("keypoints", keypoints.shape)
-                # 初始化可视化器
-                visualizer = VISUALIZERS.build(POSE_MODEL.cfg.visualizer)
+                # print("keypoints", keypoints.shape)
+                # # 初始化可视化器
+                # visualizer = VISUALIZERS.build(POSE_MODEL.cfg.visualizer)
                 
-                # 设置数据集元信息
-                visualizer.set_dataset_meta(POSE_MODEL.dataset_meta)
-                metainfo = "configs/_base_/datasets/coco_wholebody.py"
+                # # 设置数据集元信息
+                # visualizer.set_dataset_meta(POSE_MODEL.dataset_meta)
+                # metainfo = "configs/_base_/datasets/coco_wholebody.py"
             
-                visualize(
-                    frame,
-                    keypoints,
-                    out_file=f"{output_dir}/whole/{ii}.png",
-                    keypoint_score = keypoint_scores,
-                    metainfo=metainfo,
-                    show=False)
+                # visualize(
+                #     frame,
+                #     keypoints,
+                #     out_file=f"{output_dir}/whole/{ii}.png",
+                #     keypoint_score = keypoint_scores,
+                #     metainfo=metainfo,
+                #     show=False)
 
                 scores[idx] = pred_socre.squeeze()
             except Exception as e:

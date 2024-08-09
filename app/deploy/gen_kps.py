@@ -43,8 +43,9 @@ POSE_TYPE  = Literal["dwpose-t", "dwpose-m", "dwpose-s", "dwpose-l", \
                     "rtmpose-m_simcc-crowdpose_pt-aic-coco_210e-256x192-e6192cac_20230224",\
                     'rtmpose-m_simcc-mpii_pt-aic-coco_210e-256x256-ec4dbec8_20230206',\
                     'rtmo-l_16xb16-600e_body7-640x640-b37118ce_20231211']
-POSE_CONFIG: DETECT_TYPE = "dw-whole-ll_ucoco"
+POSE_CONFIG: DETECT_TYPE = "dwpose-m"
 POSE_CFG_DICT = {
+    "dwpose-m": "configs/body_2d_keypoint/rtmpose/coco/rtmpose-m_8xb256-420e_coco-256x192.py",
     "dwpose-m": "configs/body_2d_keypoint/rtmpose/coco/rtmpose-m_8xb256-420e_coco-256x192.py",
     "rtmpose-m_simcc-crowdpose_pt-aic-coco_210e-256x192-e6192cac_20230224": "configs/td-reg_res152_rle-8xb64-210e_coco-384x288.py",
     "rtmpose-m_simcc-mpii_pt-aic-coco_210e-256x256-ec4dbec8_20230206": "configs/rtmpose-m_8xb64-210e_mpii-256x256.py",

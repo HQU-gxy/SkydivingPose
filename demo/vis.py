@@ -104,6 +104,7 @@ def get_pose2D(video_path, output_dir):
         # the first frame of the video should be detected a person
         keypoints, scores = hrnet_pose(video_path, det_dim=416, num_peroson=1, gen_output=True)
     keypoints, scores, valid_frames = h36m_coco_format(keypoints, scores)
+    print("========> Get keypoints", keypoints.shape)
     re_kpts = revise_kpts(keypoints, scores, valid_frames)
     print('Generating 2D pose successfully!')
 
@@ -166,6 +167,7 @@ def get_pose3D(video_path, output_dir, fix_z):
     ## input
     keypoints = np.load(output_dir + 'input_2D/input_keypoints_2d.npz', allow_pickle=True)['reconstruction']
 
+    print("==========> keypoints", keypoints.shape)
     cap = cv2.VideoCapture(video_path)
     video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
@@ -321,7 +323,7 @@ def get_pose3D(video_path, output_dir, fix_z):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--video', type=str, default='sample_video.mp4', help='input video')
+    parser.add_argument('--video', type=str, default='sample-001.mp4', help='input video')
     parser.add_argument('--gpu', type=str, default='0', help='input video')
     parser.add_argument('--fix_z', action='store_true', help='fix z axis')
 
@@ -330,7 +332,7 @@ if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 
     # video_path = './demo/video/' + args.video
-    video_path = '/home/public/leaving/54-p1-3.mp4'
+    video_path = '/home/zlt/Documents/SkydivingPose/sample/leaving/sample-001.mp4'
 
     video_name = video_path.split('/')[-1].split('.')[0]
     output_dir = './demo/output/' + video_name + '/'

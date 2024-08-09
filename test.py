@@ -348,7 +348,7 @@ if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 
     # video_path = './sample/' + args.video
-    video_path = 'sample/platform/pl-005.mkv'
+    video_path = '/home/public/leaving/57-p1-14.mp4'
 
     video_name = video_path.split('/')[-1].split('.')[0]
     output_dir = './output/' + video_name + '/'
