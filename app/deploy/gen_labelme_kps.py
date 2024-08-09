@@ -1,3 +1,4 @@
+import base64
 import os
 import sys
 
@@ -43,7 +44,7 @@ POSE_TYPE  = Literal["dwpose-t", "dwpose-m", "dwpose-s", "dwpose-l", \
                     "rtmpose-m_simcc-crowdpose_pt-aic-coco_210e-256x192-e6192cac_20230224",\
                     'rtmpose-m_simcc-mpii_pt-aic-coco_210e-256x256-ec4dbec8_20230206',\
                     'rtmo-l_16xb16-600e_body7-640x640-b37118ce_20231211']
-POSE_CONFIG: DETECT_TYPE = "dw-whole-ll_ucoco"
+POSE_CONFIG: DETECT_TYPE = "dwpose-m"
 POSE_CFG_DICT = {
     "dwpose-m": "configs/body_2d_keypoint/rtmpose/coco/rtmpose-m_8xb256-420e_coco-256x192.py",
     "rtmpose-m_simcc-crowdpose_pt-aic-coco_210e-256x192-e6192cac_20230224": "configs/td-reg_res152_rle-8xb64-210e_coco-384x288.py",
@@ -86,7 +87,7 @@ def gen_frame_kpts(frame, people_sort, bboxs_pre, person_scores_pre, num_peroson
     bboxs, person_scores = boxes.xyxy, boxes.conf
 
     if bboxs is None or not bboxs.any():
-        # print('No person detected!')
+        print('No person detected!')
         if bboxs_pre is None or person_scores_pre is None:
             return kpts, scores, frame_bbox, frame_person_score
         bboxs = bboxs_pre
@@ -201,7 +202,7 @@ def get_3D_kpts(i, args, model, offset, DETECT_WINDOW,\
     return post_out, output_3d_all, low_index, high_index
 
 
-def gen_video_kpts(video, output_dir, num_peroson=1, gen_output=False):
+def gen_video_kpts(video, video_name, output_dir, num_peroson=1, gen_output=False):
     cap = cv2.VideoCapture(video)
     people_sort = Sort(min_hits=0)
 
@@ -276,8 +277,8 @@ def gen_video_kpts(video, output_dir, num_peroson=1, gen_output=False):
             kpts = np.zeros((num_peroson, 16, 2), dtype=np.float32)
             scores = np.zeros((num_peroson, 16), dtype=np.float32)
         else:
-            kpts = np.zeros((num_peroson, 133, 2), dtype=np.float32)
-            scores = np.zeros((num_peroson, 133), dtype=np.float32)
+            kpts = np.zeros((num_peroson, 17, 2), dtype=np.float32)
+            scores = np.zeros((num_peroson, 17), dtype=np.float32)
 
 
         # 对每个跟踪到的人进行识别
@@ -286,10 +287,6 @@ def gen_video_kpts(video, output_dir, num_peroson=1, gen_output=False):
             person_img = frame[y1:y2, x1:x2]  # 获取边界框内的图像部分
             # 获取人物图像部分在整个视频帧中的位置信息
             x1_orig, y1_orig, x2_orig, y2_orig = person_positions[idx]
-            # # 计算关键点位置在整个视频帧中的绝对位置
-            # kpts[idx, :, 0] += x1_orig
-            # kpts[idx, :, 1] += y1_orig
-            # 使用识别模型识别
             start_pose_estimation_time = time.time()
             # print("==============================")
             try:
@@ -308,27 +305,94 @@ def gen_video_kpts(video, output_dir, num_peroson=1, gen_output=False):
                 pred_instances.keypoints[0] = kpts[idx]
                 keypoints = pred_instances.keypoints
                 keypoint_scores = pred_instances.keypoint_scores
-                # print("keypoints", keypoints.shape)
-                # # 初始化可视化器
-                # visualizer = VISUALIZERS.build(POSE_MODEL.cfg.visualizer)
-                
-                # # 设置数据集元信息
-                # visualizer.set_dataset_meta(POSE_MODEL.dataset_meta)
-                # metainfo = "configs/_base_/datasets/coco_wholebody.py"
+
+                print(keypoints)
+
             
-                # visualize(
-                #     frame,
-                #     keypoints,
-                #     out_file=f"{output_dir}/whole/{ii}.png",
-                #     keypoint_score = keypoint_scores,
-                #     metainfo=metainfo,
-                #     show=False)
 
                 scores[idx] = pred_socre.squeeze()
             except Exception as e:
                 print("No Pose Detect!", e)
                 kpts, scores = pre_kps, pre_score 
         # print(kpts)      
+        frame_filename = f"images/{video_name}_frame_{ii:04d}.png"  
+        frame_path = os.path.join(output_dir, frame_filename)  
+        cv2.imwrite(frame_path, frame)  
+        # 将frame编码为PNG格式  
+        _, buffer = cv2.imencode('.png', frame)  
+        
+        # 将PNG格式的图像数据转换为base64编码的字符串  
+        img_base64 = base64.b64encode(buffer).decode('utf-8')  
+
+
+       # 准备JSON数据  
+        json_data = {  
+            "version": "5.5.0",  
+            "flags": {},  
+            "shapes": [],  
+            "imagePath": frame_filename,  
+            "imageHeight": frame.shape[0],
+            "imageData":   img_base64,
+            "imageWidth": frame.shape[1]  
+        }  
+
+        for person_idx, person_keypoints in enumerate(keypoints):  
+            for kpt_idx, (x, y) in enumerate(person_keypoints):  
+                shape = {  
+                    "label": "human",  
+                    "points": [[float(x1_orig), float(y1_orig)], [float(x2_orig), float(y2_orig)]],  
+                    "group_id": None,  
+                    "description": "",  
+                    "shape_type": "point",  
+                    "flags": {}  
+                }  
+                json_data["shapes"].append(shape)  
+
+        # 保存JSON文件  
+        json_filename = f"detect/{video_name}_frame_{ii:04d}.json"  
+        json_path = os.path.join(output_dir, json_filename)  
+        with open(json_path, 'w') as f:  
+            json.dump(json_data, f, indent=2) 
+
+
+
+
+        # 准备JSON数据  
+        json_data = {  
+            "version": "5.5.0",  
+            "flags": {},  
+            "shapes": [],  
+            "imagePath": frame_filename,  
+            "imageHeight": frame.shape[0],
+            "imageData":   img_base64,
+            "imageWidth": frame.shape[1]  
+        }  
+
+        keypoint_names = [  
+            'nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear',  
+            'left_shoulder', 'right_shoulder', 'left_elbow', 'right_elbow',  
+            'left_wrist', 'right_wrist', 'left_hip', 'right_hip',  
+            'left_knee', 'right_knee', 'left_ankle', 'right_ankle'  
+        ]  
+
+        for person_idx, person_keypoints in enumerate(keypoints):  
+            for kpt_idx, (x, y) in enumerate(person_keypoints):  
+                shape = {  
+                    "label": str(kpt_idx),  
+                    "points": [[float(x), float(y)]],  
+                    "group_id": None,  
+                    "description": keypoint_names[kpt_idx],  
+                    "shape_type": "point",  
+                    "flags": {}  
+                }  
+                json_data["shapes"].append(shape)  
+
+        # 保存JSON文件  
+        json_filename = f"keyponit/{video_name}_frame_{ii:04d}.json"  
+        json_path = os.path.join(output_dir, json_filename)  
+        with open(json_path, 'w') as f:  
+            json.dump(json_data, f, indent=2) 
+
         pre_kps, pre_score = kpts, scores
 
 
