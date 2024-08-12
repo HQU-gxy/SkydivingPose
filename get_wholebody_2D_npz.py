@@ -20,6 +20,8 @@ import matplotlib.gridspec as gridspec
 
 from app.deploy.gen_wholebody_kps import gen_video_kpts
 from app.deploy.preprocess import h36m_coco_format, revise_kpts
+from app.utils.wholebody_skeleton import extract_keypoints, extract_keypoints_with_foot
+from app.deploy.smooth_keypoints import smooth_keypoints_savgol
 
 plt.switch_backend('agg')
 warnings.filterwarnings('ignore')
@@ -32,6 +34,39 @@ from common.camera import *
 from model.mixste.hot_mixste import Model
 
 
+# Keypoint pairs for connections  
+connections = [  
+    # Head connections  
+    (0, 1),   # nose - left_eye  
+    (0, 2),   # nose - right_eye  
+    (1, 3),   # left_eye - left_ear  
+    (2, 4),   # right_eye - right_ear  
+
+    # Arm connections  
+    (5, 7),   # left_shoulder - left_elbow  
+    (7, 9),   # left_elbow - left_wrist  
+    (6, 8),   # right_shoulder - right_elbow  
+    (8, 10),  # right_elbow - right_wrist  
+
+    # Torso connections  
+    (3, 5),   # left_ear - left_shoulder  
+    (4, 6),   # right_ear - right_shoulder  
+    (5, 6),   # left_shoulder - right_shoulder  
+    (5, 11),  # left_shoulder - left_hip  
+    (6, 12),  # right_shoulder - right_hip  
+    (11, 12), # left_hip - right_hip  
+
+    # Leg connections  
+    (11, 13), # left_hip - left_knee  
+    (13, 15), # left_knee - left_ankle  
+    (15, 17), # left_ankle - left_big_toe  
+    (17, 18), # left_big_toe - left_small_toe  
+    (15, 19), # left_ankle - left_heel  
+    (12, 14), # right_hip - right_knee  
+    (14, 16), # right_knee - right_ankle  
+    (16, 20), # right_ankle - right_big_toe  
+    (20, 21)  # right_big_toe - right_small_toe  
+]  
 
 
 def show2Dpose(kps, img):
@@ -136,6 +171,54 @@ def visualize_and_save_keypoints(keypoints, video_path, output_dir):
 
     cap.release()  
 
+def visualize_and_save_keypoints_with_connections(keypoints, video_path, output_dir):  
+    # Open video file  
+    cap = cv2.VideoCapture(video_path)  
+    frame_count = 0  
+
+    # Ensure output directory exists  
+    os.makedirs(output_dir, exist_ok=True)  
+    
+    while cap.isOpened():  
+        ret, frame = cap.read()  
+        if not ret:  
+            break  
+
+        if frame_count >= keypoints.shape[1]:  # Check if frame_count exceeds number of keypoints frames  
+            break  
+
+        # Get keypoints for the current frame  
+        frame_keypoints = keypoints[0, frame_count]  # As per your data description  
+
+        # Draw keypoints  
+        for i in range(frame_keypoints.shape[0]):  
+            x, y = frame_keypoints[i]  
+            cv2.circle(frame, (int(x), int(y)), 3, (0, 255, 0), -1)  # Green circles for keypoints  
+
+        # Draw connections  
+        for kpt_a, kpt_b in connections:  
+            x1, y1 = frame_keypoints[kpt_a]  
+            x2, y2 = frame_keypoints[kpt_b]  
+
+            # Choose color based on connection type  
+            if {kpt_a, kpt_b} in [{5, 7}, {7, 9}, {6, 8}, {8, 10}]:  # Arm connections  
+                color = (0, 255, 0)  # Green  
+            elif {kpt_a, kpt_b} in [{15, 17}, {17, 18}, {15, 19},   
+                                    {16, 20}, {20, 21}]:  # Leg connections  
+                color = (0, 255, 255) # Yellow  
+            else:  # Other connections  
+                color = (255, 0, 0)  # Blue  
+
+            cv2.line(frame, (int(x1), int(y1)), (int(x2), int(y2)), color, 2)  
+
+        # Save the frame with keypoints and connections visualized  
+        frame_filename = os.path.join(output_dir, f'frame_{frame_count:04d}.png')  
+        cv2.imwrite(frame_filename, frame)  
+
+        frame_count += 1  
+
+    cap.release()  
+
 def get_pose2D(video_path, output_dir, video_name):
     cap = cv2.VideoCapture(video_path)
     width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
@@ -144,21 +227,29 @@ def get_pose2D(video_path, output_dir, video_name):
     print('\nGenerating 2D pose...')
     with torch.no_grad():
         # the first frame of the video should be detected a person
-        keypoints, scores = gen_video_kpts(video_path, num_peroson=1, gen_output=True)
+        keypoints, scores = gen_video_kpts(video_path, output_dir, num_peroson=1, gen_output=True)
 
     print("=====keypoints", keypoints.shape)
-    output_dir = f'output/wholebody/{video_name}'  
-    visualize_and_save_keypoints(keypoints, video_path, output_dir)  
-    # keypoints, scores, valid_frames = h36m_coco_format(keypoints, scores)
+    coco_17 = extract_keypoints(keypoints)  
+    coco_22 = extract_keypoints_with_foot(keypoints)  
 
-    # re_kpts = revise_kpts(keypoints, scores, valid_frames)
-    # print('Generating 2D pose successfully!')
+        # Example usage  
+    smoothed_keypoints_22 = smooth_keypoints_savgol(coco_22)  
+    smoothed_keypoints_17 = smooth_keypoints_savgol(coco_17)  
 
-    # output_dir += 'input_2D/'
-    # os.makedirs(output_dir, exist_ok=True)
+    print("=====coco_22", smoothed_keypoints_22.shape)
 
-    # output_npz = output_dir + 'input_keypoints_2d.npz'
-    # np.savez_compressed(output_npz, reconstruction=keypoints)
+    visualize_and_save_keypoints_with_connections(coco_22, video_path, f"{output_dir}/2D")
+    keypoints, scores, valid_frames = h36m_coco_format(smoothed_keypoints_17, scores)
+
+    re_kpts = revise_kpts(keypoints, scores, valid_frames)
+    print('Generating 2D pose successfully!')
+
+    output_dir += 'input_2D/'
+    os.makedirs(output_dir, exist_ok=True)
+
+    output_npz = output_dir + 'input_keypoints_2d.npz'
+    np.savez_compressed(output_npz, reconstruction=keypoints)
 
 
 def img2video(video_path, output_dir):
@@ -245,7 +336,7 @@ def get_pose3D(video_path, output_dir, fix_z):
         joints_left =  [4, 5, 6, 11, 12, 13]
         joints_right = [1, 2, 3, 14, 15, 16]
         # print(keypoints.shape)
-        # print(input_2D_no.shape)
+        # print("========> input_2D_no", input_2D_no.shape)
         input_2D = normalize_screen_coordinates(input_2D_no, w=img_size[1], h=img_size[0])  
 
         input_2D_aug = copy.deepcopy(input_2D)
@@ -261,6 +352,7 @@ def get_pose3D(video_path, output_dir, fix_z):
 
         ## estimation
         with torch.no_grad():
+            # print("input_2D[:, 0]", input_2D[:, 0].shape)
             output_3D_non_flip = model(input_2D[:, 0])
             output_3D_flip     = model(input_2D[:, 1])
 
@@ -372,9 +464,10 @@ def get_pose3D(video_path, output_dir, fix_z):
         plt.savefig(output_dir_pose + str(('%04d'% i)) + '_pose.png', dpi=200, bbox_inches = 'tight')
         plt.close()
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--video', type=str, default='aaa.mp4', help='input video')
+    parser.add_argument('--video_path', type=str, default='aaa.mp4', help='input video')
     parser.add_argument('--gpu', type=str, default='0', help='input video')
     parser.add_argument('--fix_z', action='store_true', help='fix z axis')
 
@@ -383,11 +476,13 @@ if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 
     # video_path = './sample/' + args.video
-    video_path = '/home/public/leaving/57-p1-14.mp4'
+    video_path = args.video_path
 
     video_name = video_path.split('/')[-1].split('.')[0]
-    output_dir = './output/' + video_name + '/'
+    # output_dir = './output/' + video_name + '/'
+    output_dir = f'output/camera/{video_name}/'  
 
     get_pose2D(video_path, output_dir, video_name)
 
-
+    get_pose3D(video_path, output_dir, args.fix_z)
+    img2video(video_path, output_dir)

@@ -467,7 +467,7 @@ def get_pose3D(video_path, output_dir, fix_z):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--video', type=str, default='aaa.mp4', help='input video')
+    parser.add_argument('--video_path', type=str, default='aaa.mp4', help='input video')
     parser.add_argument('--gpu', type=str, default='0', help='input video')
     parser.add_argument('--fix_z', action='store_true', help='fix z axis')
 
@@ -476,7 +476,7 @@ if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 
     # video_path = './sample/' + args.video
-    video_path = '/home/zlt/Blender/0073-0277.mkv'
+    video_path = args.video_path
 
     video_name = video_path.split('/')[-1].split('.')[0]
     # output_dir = './output/' + video_name + '/'
