@@ -1,7 +1,7 @@
 import numpy as np
 
 # 加载npz文件
-npz_file = np.load('dataset/data_2d_h36m_cpn_ft_h36m_dbb.npz', allow_pickle=True)
+npz_file = np.load('/home/zlt/Documents/SkydivingPose/sample/labelme/pose_output/input_2D/input_keypoints_2d.npz', allow_pickle=True)
 
 # 查看npz文件中的所有数组名称
 print("Arrays in the npz file:")

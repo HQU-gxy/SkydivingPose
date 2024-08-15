@@ -29,10 +29,22 @@ from mmpose.apis import visualize
 DeviceType = Literal["cuda", "cpu", "xpu"]
 DEVICE: DeviceType = "cuda"
 
-DETECT_TYPE  = Literal["yolov8n", "yolov8s", "yolov8m", "yolov8l"]
-DETECT_CONFIG: DETECT_TYPE = "yolov8l"
+DETECT_TYPE  = Literal["yolov8n", "yolov8s", "yolov8m", "yolov8l", "yolov8l-re"]
+DETECT_CONFIG: DETECT_TYPE = "yolov8l-re"
+DETECT_DICT = {
+    "yolov8l": "yolov8l.yaml",
+    "yolov8l-re": "yolov8l.yaml",
+}
+
+IMAGE_SIZE_DICT = {
+    "yolov8n": [640, 640],
+    "yolov8s": [640, 640],
+    "yolov8l": [640, 640],
+    "yolov8l-re": [640, 640]
+}
+
 DETECT_PATH = Path("checkpoint/yolo")
-DETECT_MODEL = YOLO("{}.yaml".format(DETECT_CONFIG))
+DETECT_MODEL = YOLO(DETECT_DICT[DETECT_CONFIG])
 DETECT_MODEL = YOLO("{}/{}.pt".format(DETECT_PATH, DETECT_CONFIG))
 
 THRED_SCORE = 0.5
@@ -65,11 +77,7 @@ VISUALIZER = VISUALIZERS.build(POSE_MODEL.cfg.visualizer)
 # 设置数据集元信息
 VISUALIZER.set_dataset_meta(POSE_MODEL.dataset_meta)
 
-IMAGE_SIZE_DICT = {
-    "yolov8n": [640, 640],
-    "yolov8s": [640, 640],
-    "yolov8l": [640, 640]
-}
+
 
 IMAGE_SIZE = IMAGE_SIZE_DICT[DETECT_CONFIG]
 
@@ -134,6 +142,28 @@ def gen_frame_kpts(frame, people_sort, bboxs_pre, person_scores_pre, num_peroson
         kpts[idx, :, 1] += y1_orig
 
     return kpts, scores, bboxs_pre, person_scores_pre
+
+
+
+
+def gen_frame_kpts_direct_bbox(frame, bbox):  
+    kpts = np.zeros((17, 2), dtype=np.float32)  
+    scores = np.zeros((17), dtype=np.float32)  
+    frame_bbox = None  
+    frame_person_score = None  
+
+    x1, y1, x2, y2 = map(int, bbox)  
+    person_img = frame[y1:y2, x1:x2]  
+    x1_orig, y1_orig, x2_orig, y2_orig = bbox 
+    person_results = inference_topdown(POSE_MODEL, person_img)  
+    pred_instances = person_results[0].pred_instances  
+    pred_kps, pred_socre = pred_instances.keypoints[0], pred_instances.keypoint_scores[0]  
+    
+    kpts = pred_kps  
+    scores = pred_socre.squeeze()  
+    kpts[:, 0] += x1_orig
+    kpts[:, 1] += y1_orig
+    return kpts, scores
 
 
 def get_3D_kpts(i, args, model, offset, DETECT_WINDOW,\

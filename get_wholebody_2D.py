@@ -467,7 +467,7 @@ def get_pose3D(video_path, output_dir, fix_z):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--video_path', type=str, default='aaa.mp4', help='input video')
+    parser.add_argument('--video_path', type=str, default='sample/leaving-without-cloth.mp4', help='input video')
     parser.add_argument('--gpu', type=str, default='0', help='input video')
     parser.add_argument('--fix_z', action='store_true', help='fix z axis')
 
